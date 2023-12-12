@@ -7,6 +7,10 @@ export interface Item {
   * present if listed
   */
   price?: number
-  listable: boolean
   type: string
+}
+
+export interface ListedItem extends Item {
+  listingId: string
+  invoice: string
 }

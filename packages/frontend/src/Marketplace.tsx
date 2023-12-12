@@ -1,36 +1,118 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
-import demoItemAvif from './assets/demo-item.avif'
+import { useSuiClient } from '@mysten/dapp-kit';
+import lightBolt11Decoder from 'light-bolt11-decoder';
+import type { SuiClient } from '@mysten/sui.js/client';
+import { Loading } from './Loading'
+import { VAULT_ID, SATS_DECIMALS, SUI_DECIMALS } from "./constants"
+import { ListedItem } from './types'
+
+import suiLogoPng from './assets/sui-logo.png'
 
 function Marketplace() {
+  const suiClient = useSuiClient()
+  const [loading, setLoading] = useState(false)
+  const [items, setItems] = useState<ListedItem[]>([])
+
+  useEffect(() => {
+    setLoading(true)
+    fetchMarketplaceItems(suiClient).then(listedItems => {
+      setItems(listedItems)
+      setLoading(false)
+    })
+  }, [])
+
   return (
     <section>
-      <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
-        <Item name='Hello' price={123.45}/>
-        <Item name='World' price={54.321}/>
-        <Item name='Asdf' price={123.45}/>
-      </div>
+      { loading ? (
+        <Loading />
+      ) : items.length > 0 ? (
+        <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
+          { items.map(item => (
+            <Item key={item.id} item={item} />
+          )) }
+        </div>
+      ) : (
+        <p className='text-center'>No Items</p>
+      ) }
     </section>
   )
 }
 
 export default Marketplace
 
+async function fetchMarketplaceItems(suiClient: SuiClient): Promise<ListedItem[]> {
+  const dynamicFields = await suiClient.getDynamicFields({
+    parentId: VAULT_ID
+  })
+
+  const dynamicObjects = await Promise.all(dynamicFields.data.map(field => (
+    suiClient.getDynamicFieldObject({
+      parentId: VAULT_ID,
+      name: {
+        type: field.name.type,
+        value: field.name.value,
+      }
+    })
+  )))
+
+  const listedItems = dynamicObjects.map(obj => obj.data?.content as any).flatMap(content => {
+    try {
+      const invoice = new TextDecoder().decode(new Uint8Array(content.fields.invoice))
+      const price = parseFloat(
+        lightBolt11Decoder.decode(invoice).sections.find((s: any) => s.name === 'amount').value
+      ) / Math.pow(10, SATS_DECIMALS)
+
+      const listing = {
+        listingId: content.fields.id.id,
+        invoice,
+        price,
+      }
+
+      if (content.fields.obj.fields.balance) {
+        return [{
+          ...listing,
+
+          id: content.fields.obj.fields.id.id,
+          name: `${parseInt(content.fields.obj.fields.balance) / Math.pow(10, SUI_DECIMALS)} SUI`,
+          imgUrl: suiLogoPng,
+          type: content.fields.obj.type,
+        }]
+      }
+
+      if (content.fields.obj.fields.name) {
+        return [{
+          ...listing,
+
+          id: content.fields.obj.fields.id.id,
+          name: content.fields.obj.fields.name,
+          imgUrl: content.fields.obj.fields.img_url,
+          type: content.fields.obj.type,
+        }]
+      }
+    } catch (error) {
+      console.warn(error, content)
+    }
+    return []
+  })
+
+  return listedItems
+}
+
 type BuyStep = 'init' | 'paid' | 'paid-claimed'
-function Item({ name, price }: {
-  name: string
-  price: number
+function Item({ item }: {
+  item: ListedItem
 }) {
   const buyModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<BuyStep>('init')
 
   return <>
     <div className="w-full md:w-1/3 xl:w-1/4 p-6 flex flex-col">
-      <img className="hover:grow hover:shadow-lg cursor-pointer" src={demoItemAvif} onClick={() => { buyModal.current?.showModal() }} />
+      <img className="hover:grow hover:shadow-lg cursor-pointer" src={item.imgUrl} onClick={() => { buyModal.current?.showModal() }} />
       <div className='flex justify-between pt-3'>
         <div className="">
-          <p className="">{ name }</p>
-          <p className="pt-1 text-gray-900">{ price }</p>
+          <p className="">{ item.name }</p>
+          <p className="pt-1 text-gray-900">{ item.price } SATs</p>
         </div>
         <button
           className='inline-block px-4 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-400'
@@ -64,7 +146,7 @@ function Item({ name, price }: {
               console.log('buy action WIP...')
               setStep('paid')
             } : undefined}
-          >{ step === 'init' ? `Pay with ${price} SATs` : 'Paid' }</button>
+          >{ step === 'init' ? `Pay with ${item.price} SATs` : 'Paid' }</button>
 
           <hr />
 

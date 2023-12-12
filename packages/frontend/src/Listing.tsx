@@ -8,9 +8,7 @@ import suiLogoPng from './assets/sui-logo.png'
 import { SuiTransactionBlockResponse } from "@mysten/sui.js/client"
 import { TransactionBlock } from "@mysten/sui.js/transactions"
 import { bcs } from "@mysten/sui.js/bcs"
-import { PACKAGE_ID, VAULT_ID } from "./constants"
-
-const SUI_DECIMALS = 9
+import { PACKAGE_ID, VAULT_ID, SUI_DECIMALS } from "./constants"
 
 function Listing() {
   const account = useCurrentAccount()
@@ -34,7 +32,6 @@ function Listing() {
           id: content.fields.id.id,
           name: `${parseInt(content.fields.balance) / Math.pow(10, SUI_DECIMALS)} SUI`,
           imgUrl: suiLogoPng,
-          listable: true,
           type: content.type,
         }
       })
@@ -44,7 +41,6 @@ function Listing() {
           id: content.fields.id.id,
           name: content.fields.name,
           imgUrl: content.fields.img_url,
-          listable: true,
           type: content.type,
         }
       }).filter(i => i.name)
@@ -99,7 +95,7 @@ function NftItem({ item }: {
 
   return <>
     <div className="w-full md:w-1/3 xl:w-1/4 p-6 flex flex-col">
-      { item.listable && !listed ? (
+      { !listed ? (
         <img className='hover:grow hover:shadow-lg cursor-pointer' src={item.imgUrl} onClick={() => { listingModal.current?.showModal() }} />
       ) : (
         <img src={item.imgUrl} />
@@ -107,22 +103,20 @@ function NftItem({ item }: {
       <div className='flex justify-between pt-3'>
         <div className="">
           <p className="">{ item.name }</p>
-          { item.listable && listed && (
+          { listed && (
             <p className="pt-1 text-gray-900">{ item.price }</p>
           ) }
         </div>
-        {item.listable && (
-          <button
-            className={classnames(
-              'inline-block px-4 py-3 rounded-lg text-white',
-              listed ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'
-            )}
-            onClick={() => {
-              listingModal.current?.showModal()
-            }}
-            disabled={listed}
-          >{ listed ? 'Listed' : 'List' }</button>
-        )}
+        <button
+          className={classnames(
+            'inline-block px-4 py-3 rounded-lg text-white',
+            listed ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'
+          )}
+          onClick={() => {
+            listingModal.current?.showModal()
+          }}
+          disabled={listed}
+        >{ listed ? 'Listed' : 'List' }</button>
       </div>
     </div>
 
