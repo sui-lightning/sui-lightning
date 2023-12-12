@@ -23,7 +23,7 @@ jobs:
       - run: pnpm install
 
       - name: Build project
-        run: cd packages/frontend && pnpm build
+        run: cd packages/frontend && pnpm build --base=/${{ github.repository }}/
 
       - name: Upload production-ready build files
         uses: actions/upload-artifact@v3
