@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import classnames from 'classnames'
+import { useAutoConnectWallet } from '@mysten/dapp-kit';
 import Marketplace from './Marketplace'
 import Listing from './Listing'
 
@@ -9,6 +10,7 @@ type Tab = 'marketplace' | 'listing'
 
 function App() {
   const [tab, setTab] = useState<Tab>('marketplace')
+  useAutoConnectWallet();
 
   return (
     <>

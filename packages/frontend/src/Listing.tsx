@@ -1,15 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
-import { suiClient } from './suiClient'
+import { useSuiClient, useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
+import { Loading } from './Loading'
 import { Item } from './types'
 import { requestProvider } from "webln";
 
 
 function Listing() {
+  const account = useCurrentAccount()
+  const suiClient = useSuiClient()
+  const [loading, setLoading] = useState(false)
   const [nftItems, setNftItems] = useState<Item[]>([])
+
   useEffect(() => {
+    if (!account) return
+
+    setLoading(true)
+
     suiClient.getOwnedObjects({
-      owner: '0x570374c3a93b38c2be00fa86faca8b36223cae96b9b61839b30eb6b5c6306bae',
+      owner: account.address,
       options: { showContent: true },
     }).then(objects => {
       const balanceItems = objects.data.map(o => o.data?.content as any).filter(
@@ -32,16 +41,31 @@ function Listing() {
       }).filter(i => i.name)
 
       setNftItems([...balanceItems, ...nftItems])
+      setLoading(false)
     });
-  }, [])
+  }, [account])
+
+  if (!account) {
+    return (
+      <section className="flex justify-center py-8">
+        <ConnectButton style={{ background: 'black', color: 'white' }} />
+      </section>
+    )
+  }
 
   return <>
-    <section className="bg-white py-8">
-      <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
-        { nftItems.map(item => (
-          <NftItem key={item.id} item={item} />
-        )) }
-      </div>
+    <section className="py-8">
+      { loading ? (
+        <Loading />
+      ) : nftItems.length > 0 ? (
+        <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
+          { nftItems.map(item => (
+            <NftItem key={item.id} item={item} />
+          )) }
+        </div>
+      ) : (
+        <p className='text-center'>No NFT</p>
+      ) }
     </section>
   </>
 }
@@ -89,7 +113,7 @@ function NftItem({ item }: {
       </div>
     </div>
 
-    <dialog ref={listingModal} className="relative w-80 bg-white rounded-lg shadow max-w-screen-md">
+    <dialog ref={listingModal} className="relative w-80 rounded-lg shadow max-w-screen-md">
       <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
         <h3 className="text-xl font-semibold text-gray-900">
           Listing
