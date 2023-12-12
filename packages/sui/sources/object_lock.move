@@ -1,7 +1,7 @@
 module sui_lightning::object_lock {
 
     // Imports
-    use std::string::{String};
+    // use std::string::{String};
     use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -16,7 +16,7 @@ module sui_lightning::object_lock {
         id: UID,
         owner: address,
         obj: Obj,
-        invoice: String
+        invoice: vector<u8>
     }
 
     fun init(ctx: &mut TxContext) {
@@ -43,7 +43,7 @@ module sui_lightning::object_lock {
         vault: &mut ObjectLockVault,
         hash: vector<u8>,
         obj: Obj,
-        invoice: String,
+        invoice: vector<u8>,
         ctx: &mut TxContext
     ) {
         let obj_wrapper = LockedObjectWrapper {
