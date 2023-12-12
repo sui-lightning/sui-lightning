@@ -4,7 +4,7 @@ import demoItemAvif from './assets/demo-item.avif'
 
 function Marketplace() {
   return (
-    <section className="bg-white py-8">
+    <section>
       <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
         <Item name='Hello' price={123.45}/>
         <Item name='World' price={54.321}/>

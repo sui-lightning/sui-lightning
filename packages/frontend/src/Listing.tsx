@@ -48,14 +48,14 @@ function Listing() {
 
   if (!account) {
     return (
-      <section className="flex justify-center py-8">
+      <section className="flex justify-center">
         <ConnectButton style={{ background: 'black', color: 'white' }} />
       </section>
     )
   }
 
   return <>
-    <section className="py-8">
+    <section>
       { loading ? (
         <Loading />
       ) : nftItems.length > 0 ? (
