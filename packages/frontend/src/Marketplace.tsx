@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import classnames from 'classnames'
+import demoItemAvif from './assets/demo-item.avif'
 
 function Marketplace() {
   return (
@@ -25,7 +26,7 @@ function Item({ name, price }: {
 
   return <>
     <div className="w-full md:w-1/3 xl:w-1/4 p-6 flex flex-col">
-      <img className="hover:grow hover:shadow-lg cursor-pointer" src="/demo-item.avif" onClick={() => { buyModal.current?.showModal() }} />
+      <img className="hover:grow hover:shadow-lg cursor-pointer" src={demoItemAvif} onClick={() => { buyModal.current?.showModal() }} />
       <div className='flex justify-between pt-3'>
         <div className="">
           <p className="">{ name }</p>

@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
 import { useSuiClient, useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
+import { requestProvider } from "webln";
 import { Loading } from './Loading'
 import { Item } from './types'
-import { requestProvider } from "webln";
-
+import suiLogoPng from './assets/sui-logo.png'
 
 function Listing() {
   const account = useCurrentAccount()
@@ -27,7 +27,7 @@ function Listing() {
         return {
           id: content.fields.id.id,
           name: `Balance: ${content.fields.balance}`,
-          imgUrl: '/sui-logo.png',
+          imgUrl: suiLogoPng,
           listable: false,
         }
       })
