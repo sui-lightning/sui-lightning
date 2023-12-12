@@ -6,6 +6,8 @@ import { Loading } from './Loading'
 import { Item } from './types'
 import suiLogoPng from './assets/sui-logo.png'
 
+const SUI_DECIMALS = 9
+
 function Listing() {
   const account = useCurrentAccount()
   const suiClient = useSuiClient()
@@ -21,16 +23,16 @@ function Listing() {
       owner: account.address,
       options: { showContent: true },
     }).then(objects => {
-      const balance = objects.data.map(o => o.data?.content as any).map(
+      const balanceItems = objects.data.map(o => o.data?.content as any).filter(
         content => content.fields.balance
-      ).reduce((acc, cur) => cur ? (acc + parseInt(cur) / Math.pow(10, 9)) : acc, 0)
-
-      const balanceItem = {
-        id: 'balance',
-        name: `Balance: ${balance}`,
-        imgUrl: suiLogoPng,
-        listable: false,
-      }
+      ).map(content => {
+        return {
+          id: content.fields.id.id,
+          name: `${parseInt(content.fields.balance) / Math.pow(10, SUI_DECIMALS)} SUI`,
+          imgUrl: suiLogoPng,
+          listable: true,
+        }
+      })
 
       const nftItems = objects.data.map(o => o.data?.content as any).map(content => {
         return {
@@ -41,7 +43,7 @@ function Listing() {
         }
       }).filter(i => i.name)
 
-      setNftItems([balanceItem, ...nftItems])
+      setNftItems([...balanceItems, ...nftItems])
       setLoading(false)
     });
   }, [account])
