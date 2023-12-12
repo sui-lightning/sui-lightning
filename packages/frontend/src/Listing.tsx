@@ -21,16 +21,17 @@ function Listing() {
       owner: account.address,
       options: { showContent: true },
     }).then(objects => {
-      const balanceItems = objects.data.map(o => o.data?.content as any).filter(
+      const balance = objects.data.map(o => o.data?.content as any).map(
         content => content.fields.balance
-      ).map(content => {
-        return {
-          id: content.fields.id.id,
-          name: `Balance: ${content.fields.balance}`,
-          imgUrl: suiLogoPng,
-          listable: false,
-        }
-      })
+      ).reduce((acc, cur) => cur ? (acc + parseInt(cur) / Math.pow(10, 9)) : acc, 0)
+
+      const balanceItem = {
+        id: 'balance',
+        name: `Balance: ${balance}`,
+        imgUrl: suiLogoPng,
+        listable: false,
+      }
+
       const nftItems = objects.data.map(o => o.data?.content as any).map(content => {
         return {
           id: content.fields.id.id,
@@ -40,7 +41,7 @@ function Listing() {
         }
       }).filter(i => i.name)
 
-      setNftItems([...balanceItems, ...nftItems])
+      setNftItems([balanceItem, ...nftItems])
       setLoading(false)
     });
   }, [account])
