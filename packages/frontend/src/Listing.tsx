@@ -1,13 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
-import { suiClient } from './suiClient'
+import { useSuiClient, useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
+import { requestProvider } from "webln";
+import { Loading } from './Loading'
 import { Item } from './types'
+import suiLogoPng from './assets/sui-logo.png'
+
+const SUI_DECIMALS = 9
 
 function Listing() {
+  const account = useCurrentAccount()
+  const suiClient = useSuiClient()
+  const [loading, setLoading] = useState(false)
   const [nftItems, setNftItems] = useState<Item[]>([])
+
   useEffect(() => {
+    if (!account) return
+
+    setLoading(true)
+
     suiClient.getOwnedObjects({
-      owner: '0x570374c3a93b38c2be00fa86faca8b36223cae96b9b61839b30eb6b5c6306bae',
+      owner: account.address,
       options: { showContent: true },
     }).then(objects => {
       const balanceItems = objects.data.map(o => o.data?.content as any).filter(
@@ -15,11 +28,12 @@ function Listing() {
       ).map(content => {
         return {
           id: content.fields.id.id,
-          name: `Balance: ${content.fields.balance}`,
-          imgUrl: '/sui-logo.png',
-          listable: false,
+          name: `${parseInt(content.fields.balance) / Math.pow(10, SUI_DECIMALS)} SUI`,
+          imgUrl: suiLogoPng,
+          listable: true,
         }
       })
+
       const nftItems = objects.data.map(o => o.data?.content as any).map(content => {
         return {
           id: content.fields.id.id,
@@ -30,16 +44,31 @@ function Listing() {
       }).filter(i => i.name)
 
       setNftItems([...balanceItems, ...nftItems])
+      setLoading(false)
     });
-  }, [])
+  }, [account])
+
+  if (!account) {
+    return (
+      <section className="flex justify-center">
+        <ConnectButton style={{ background: 'black', color: 'white' }} />
+      </section>
+    )
+  }
 
   return <>
-    <section className="bg-white py-8">
-      <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
-        { nftItems.map(item => (
-          <NftItem key={item.id} item={item} />
-        )) }
-      </div>
+    <section>
+      { loading ? (
+        <Loading />
+      ) : nftItems.length > 0 ? (
+        <div className="container mx-auto flex items-center flex-wrap pt-4 pb-12">
+          { nftItems.map(item => (
+            <NftItem key={item.id} item={item} />
+          )) }
+        </div>
+      ) : (
+        <p className='text-center'>No NFT</p>
+      ) }
     </section>
   </>
 }
@@ -53,6 +82,8 @@ function NftItem({ item }: {
 }) {
   const listingModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<ListingStep>('init')
+  const [price, setPrice] = useState("")
+  const [/* invoice */, setInvoice] = useState<any>()
 
   const listed = typeof item.price === 'number'
 
@@ -85,7 +116,7 @@ function NftItem({ item }: {
       </div>
     </div>
 
-    <dialog ref={listingModal} className="relative w-80 bg-white rounded-lg shadow max-w-screen-md">
+    <dialog ref={listingModal} className="relative w-80 rounded-lg shadow max-w-screen-md">
       <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
         <h3 className="text-xl font-semibold text-gray-900">
           Listing
@@ -103,7 +134,7 @@ function NftItem({ item }: {
         { step !== 'listed' ? <>
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-900">Price</label>
-            <input type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" placeholder="123.45" disabled={step !== 'init'} />
+            <input type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" placeholder="123.45" disabled={step !== 'init'} value={price} onChange={(event) => setPrice(event.target.value)}/>
           </div>
 
           <button
@@ -111,9 +142,17 @@ function NftItem({ item }: {
               'inline-block px-8 py-3 rounded-lg text-white',
               step === 'init' ? 'bg-green-600 hover:bg-green-400' : 'bg-green-200 cursor-not-allowed',
             )}
-            onClick={step === 'init' ? () => {
-              console.log('creating invoice action WIP...')
-              setStep('invoice-created')
+            onClick={step === 'init' ? async () => {
+              try {
+                const webln = await requestProvider();
+                const res = await webln.makeInvoice({ amount: price })
+                setInvoice(res)
+                setStep('invoice-created')
+                // Now you can call all of the webln.* methods
+              } catch (err:any) {
+                // Tell the user what went wrong
+                alert(err.message);
+              }
             } : undefined}
           >Create Invoice</button>
 
