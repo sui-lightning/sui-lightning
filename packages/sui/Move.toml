@@ -1,0 +1,9 @@
+[package]
+name = "sui_lightning"
+version = "0.0.1"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.14.2" }
+
+[addresses]
+sui_lightning = "0x0"
