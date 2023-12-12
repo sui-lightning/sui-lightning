@@ -13,7 +13,7 @@ function App() {
   return (
     <>
       <nav className="p-6">
-        <ul className="flex flex-col sm:flex-row justify-center text-sm font-medium text-center">
+        <ul className="flex justify-center text-sm font-medium text-center">
           <li className="me-2">
             <button
               className={classnames(
