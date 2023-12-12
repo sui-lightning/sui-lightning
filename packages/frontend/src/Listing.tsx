@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
 import { suiClient } from './suiClient'
 import { Item } from './types'
+import { requestProvider } from "webln";
+
 
 function Listing() {
   const [nftItems, setNftItems] = useState<Item[]>([])
@@ -53,6 +55,8 @@ function NftItem({ item }: {
 }) {
   const listingModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<ListingStep>('init')
+  const [price, setPrice] = useState("")
+  const [invoice, setInvoice] = useState<any>()
 
   const listed = typeof item.price === 'number'
 
@@ -103,7 +107,7 @@ function NftItem({ item }: {
         { step !== 'listed' ? <>
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-900">Price</label>
-            <input type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" placeholder="123.45" disabled={step !== 'init'} />
+            <input type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" placeholder="123.45" disabled={step !== 'init'} value={price} onChange={(event) => setPrice(event.target.value)}/>
           </div>
 
           <button
@@ -111,9 +115,17 @@ function NftItem({ item }: {
               'inline-block px-8 py-3 rounded-lg text-white',
               step === 'init' ? 'bg-green-600 hover:bg-green-400' : 'bg-green-200 cursor-not-allowed',
             )}
-            onClick={step === 'init' ? () => {
-              console.log('creating invoice action WIP...')
-              setStep('invoice-created')
+            onClick={step === 'init' ? async () => {
+              try {
+                const webln = await requestProvider();
+                const res = await webln.makeInvoice({ amount: price })
+                setInvoice(res)
+                setStep('invoice-created')
+                // Now you can call all of the webln.* methods
+              } catch (err:any) {
+                // Tell the user what went wrong
+                alert(err.message);
+              }
             } : undefined}
           >Create Invoice</button>
 
