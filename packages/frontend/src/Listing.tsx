@@ -80,7 +80,7 @@ function NftItem({ item }: {
   const listingModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<ListingStep>('init')
   const [price, setPrice] = useState("")
-  const [invoice, setInvoice] = useState<any>()
+  const [/* invoice */, setInvoice] = useState<any>()
 
   const listed = typeof item.price === 'number'
 
