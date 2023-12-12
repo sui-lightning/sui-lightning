@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import classnames from 'classnames'
-import { useSuiClient, useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount, ConnectButton, useSignAndExecuteTransactionBlock} from '@mysten/dapp-kit';
 import { requestProvider } from "webln";
 import { Loading } from './Loading'
 import { Item } from './types'
 import suiLogoPng from './assets/sui-logo.png'
+import { SuiTransactionBlockResponse } from "@mysten/sui.js/client"
+import { TransactionBlock } from "@mysten/sui.js/transactions"
+import { bcs } from "@mysten/sui.js/bcs"
+import { PACKAGE_ID, VAULT_ID } from "./constants"
 
 const SUI_DECIMALS = 9
 
@@ -31,6 +35,7 @@ function Listing() {
           name: `${parseInt(content.fields.balance) / Math.pow(10, SUI_DECIMALS)} SUI`,
           imgUrl: suiLogoPng,
           listable: true,
+          type: content.type,
         }
       })
 
@@ -40,6 +45,7 @@ function Listing() {
           name: content.fields.name,
           imgUrl: content.fields.img_url,
           listable: true,
+          type: content.type,
         }
       }).filter(i => i.name)
 
@@ -83,9 +89,13 @@ function NftItem({ item }: {
   const listingModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<ListingStep>('init')
   const [price, setPrice] = useState("")
-  const [/* invoice */, setInvoice] = useState<any>()
+  const [invoice, setInvoice] = useState<any>()
+  const { mutate: execLock } = useSignAndExecuteTransactionBlock()
 
   const listed = typeof item.price === 'number'
+
+  const fromHexString = (hexString: any) =>
+    Uint8Array.from(hexString.match(/.{1,2}/g).map((byte:any) => parseInt(byte, 16)));
 
   return <>
     <div className="w-full md:w-1/3 xl:w-1/4 p-6 flex flex-col">
@@ -144,7 +154,7 @@ function NftItem({ item }: {
             )}
             onClick={step === 'init' ? async () => {
               try {
-                const webln = await requestProvider();
+                const webln = await requestProvider()
                 const res = await webln.makeInvoice({ amount: price })
                 setInvoice(res)
                 setStep('invoice-created')
@@ -164,8 +174,37 @@ function NftItem({ item }: {
               step === 'invoice-created' ? 'bg-green-600 hover:bg-green-400' : 'bg-green-200 cursor-not-allowed',
             )}
             onClick={() => {
+              // Create new transaction block
+              const txb = new TransactionBlock()
+              // Calling smart contract function
+              txb.moveCall({
+                target: `${PACKAGE_ID}::object_lock::lock_with_hash`,
+                typeArguments: [
+                  item.type,
+                ],
+                arguments: [
+                  txb.object(VAULT_ID),
+                  txb.pure(bcs.vector(bcs.U8).serialize(fromHexString(invoice.rHash))),
+                  txb.object(item.id),
+                  txb.pure(bcs.vector(bcs.U8).serialize((new TextEncoder()).encode(invoice.paymentRequest))),
+                ],
+              });
+              execLock(
+                {
+                  transactionBlock: txb,
+                },
+                {
+                  onError: (err) => {
+                    console.log(err)
+                  },
+                  onSuccess: (result: SuiTransactionBlockResponse) => {
+                    console.log(`Digest: ${result.digest}`);
+                    setStep('listed')
+                  },
+                },
+              );
+
               console.log('listing on Sui action WIP...')
-              setStep('listed')
             }}
           >List on Sui</button>
         </> : <>

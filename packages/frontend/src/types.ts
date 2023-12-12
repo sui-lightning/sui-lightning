@@ -8,4 +8,5 @@ export interface Item {
   */
   price?: number
   listable: boolean
+  type: string
 }
