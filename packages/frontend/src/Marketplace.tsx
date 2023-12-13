@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
+import { requestProvider } from "webln";
 import classnames from 'classnames'
-import { useSuiClient } from '@mysten/dapp-kit';
+import { useSuiClient, useSignAndExecuteTransactionBlock} from '@mysten/dapp-kit';
 import lightBolt11Decoder from 'light-bolt11-decoder';
 import type { SuiClient } from '@mysten/sui.js/client';
 import { Loading } from './Loading'
-import { VAULT_ID, SATS_DECIMALS, SUI_DECIMALS } from "./constants"
+import { PACKAGE_ID, VAULT_ID, SATS_DECIMALS, SUI_DECIMALS } from "./constants"
 import { ListedItem } from './types'
+import { TransactionBlock } from "@mysten/sui.js/transactions"
+import { bcs } from "@mysten/sui.js/bcs"
+import { SuiTransactionBlockResponse } from "@mysten/sui.js/client"
 
 import suiLogoPng from './assets/sui-logo.png'
 
@@ -17,6 +21,7 @@ function Marketplace() {
   useEffect(() => {
     setLoading(true)
     fetchMarketplaceItems(suiClient).then(listedItems => {
+      console.log(listedItems)
       setItems(listedItems)
       setLoading(false)
     })
@@ -57,6 +62,7 @@ async function fetchMarketplaceItems(suiClient: SuiClient): Promise<ListedItem[]
   )))
 
   const listedItems = dynamicObjects.map(obj => obj.data?.content as any).flatMap(content => {
+    console.log('content', content)
     try {
       const invoice = new TextDecoder().decode(new Uint8Array(content.fields.invoice))
       const price = parseFloat(
@@ -100,11 +106,17 @@ async function fetchMarketplaceItems(suiClient: SuiClient): Promise<ListedItem[]
 }
 
 type BuyStep = 'init' | 'paid' | 'paid-claimed'
+
 function Item({ item }: {
   item: ListedItem
 }) {
   const buyModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<BuyStep>('init')
+  const [paymentProof, setPaymentProof] = useState<any>()
+  const { mutate: execUnlock } = useSignAndExecuteTransactionBlock()
+
+  const fromHexString = (hexString: any) =>
+    Uint8Array.from(hexString.match(/.{1,2}/g).map((byte:any) => parseInt(byte, 16)));
 
   return <>
     <div className="w-full md:w-1/3 xl:w-1/4 p-6 flex flex-col">
@@ -117,6 +129,7 @@ function Item({ item }: {
         <button
           className='inline-block px-4 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-400'
           onClick={() => {
+            console.log(item)
             buyModal.current?.showModal()
           }}
         >Buy</button>
@@ -142,9 +155,27 @@ function Item({ item }: {
               'inline-block px-8 py-3 rounded-lg text-white',
               step === 'init' ? 'bg-blue-600 hover:bg-blue-400' : 'bg-blue-200 cursor-not-allowed',
             )}
-            onClick={step === 'init' ? () => {
+            onClick={step === 'init' ? async () => {
+
+              // read data from contract
+
+              try {
+                const webln = await requestProvider()
+                const res = await webln.sendPayment(item.invoice)
+                console.log('res', res)
+                setPaymentProof(res)
+                setStep('paid')
+                // Now you can call all of the webln.* methods
+              } catch (err:any) {
+                // Tell the user what went wrong
+                alert(err.message);
+              }
+              // get the payment string
+              // pay sats through webln
+
+
+
               console.log('buy action WIP...')
-              setStep('paid')
             } : undefined}
           >{ step === 'init' ? `Pay with ${item.price} SATs` : 'Paid' }</button>
 
@@ -156,8 +187,41 @@ function Item({ item }: {
               step === 'paid' ? 'bg-blue-600 hover:bg-blue-400' : 'bg-blue-200 cursor-not-allowed',
             )}
             onClick={() => {
+
+              console.log(item.type)
+              // do sui contract call
+              const txb = new TransactionBlock()
+              // Calling smart contract function
+              txb.moveCall({
+                target: `${PACKAGE_ID}::object_lock::unlock_with_preimage`,
+                typeArguments: [
+                  item.type,
+                ],
+                arguments: [
+                  txb.object(VAULT_ID),
+                  txb.pure(bcs.vector(bcs.U8).serialize(fromHexString(paymentProof.paymentHash))),
+                  txb.pure(bcs.vector(bcs.U8).serialize(fromHexString(paymentProof.preimage))),
+                ],
+              });
+              execUnlock(
+                {
+                  transactionBlock: txb,
+                },
+                {
+                  onError: (err:any) => {
+                    console.log(err)
+                  },
+                  onSuccess: (result: SuiTransactionBlockResponse) => {
+                    console.log(`Digest: ${result.digest}`);
+                    setStep('paid-claimed')
+                  },
+                },
+              );
+
+
+
               console.log('claim action WIP...')
-              setStep('paid-claimed')
+              // setStep('paid-claimed')
             }}
           >Claim on Sui</button>
         </> : <>
