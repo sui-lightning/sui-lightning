@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { requestProvider } from "webln";
 import classnames from 'classnames'
-import { useSuiClient, useSignAndExecuteTransactionBlock} from '@mysten/dapp-kit';
+import { useSuiClient, useSignAndExecuteTransactionBlock, useCurrentAccount} from '@mysten/dapp-kit';
 import lightBolt11Decoder from 'light-bolt11-decoder';
 import type { SuiClient } from '@mysten/sui.js/client';
 import { Loading } from './Loading'
@@ -110,6 +110,7 @@ type BuyStep = 'init' | 'paid' | 'paid-claimed'
 function Item({ item }: {
   item: ListedItem
 }) {
+  const account = useCurrentAccount();
   const buyModal = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<BuyStep>('init')
   const [paymentProof, setPaymentProof] = useState<any>()
@@ -192,7 +193,7 @@ function Item({ item }: {
               // do sui contract call
               const txb = new TransactionBlock()
               // Calling smart contract function
-              txb.moveCall({
+              const [unlockedObj] =txb.moveCall({
                 target: `${PACKAGE_ID}::object_lock::unlock_with_preimage`,
                 typeArguments: [
                   item.type,
@@ -203,6 +204,7 @@ function Item({ item }: {
                   txb.pure(bcs.vector(bcs.U8).serialize(fromHexString(paymentProof.preimage))),
                 ],
               });
+              txb.transferObjects([unlockedObj],account!.address)
               execUnlock(
                 {
                   transactionBlock: txb,
