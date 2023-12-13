@@ -62,7 +62,6 @@ async function fetchMarketplaceItems(suiClient: SuiClient): Promise<ListedItem[]
   )))
 
   const listedItems = dynamicObjects.map(obj => obj.data?.content as any).flatMap(content => {
-    console.log('content', content)
     try {
       const invoice = new TextDecoder().decode(new Uint8Array(content.fields.invoice))
       const price = parseFloat(
