@@ -45,6 +45,52 @@ async function lockObject(client: SuiClient, keypair: Ed25519Keypair, address: s
   
 }
 
+async function scan(client: SuiClient, keypair: Ed25519Keypair) {
+  const tx = new TransactionBlock();
+  // arguments?: (TransactionArgument | SerializedBcs<any>)[];
+  // typeArguments?: string[];
+  // target: `${string}::${string}::${string}`;
+
+  // txb.)),
+  // const bytes = bcs.vector(bcs.U8).serialize([0x11, 0x22, 0x33, 0x44]).toBytes();
+  // console.log(bytes);
+  // tx.moveCall({
+  //   target: `${PACKAGE_ID}::object_lock::lock_with_hash` as any,
+  //   typeArguments: [
+  //     "0x2::coin::Coin<0x2::sui::SUI>",
+  //   ],
+  //   arguments: [
+  //     tx.object(VAULT_ID),
+  //     tx.pure(bcs.vector(bcs.U8).serialize([0x11, 0x22, 0x33, 0x44])),
+  //     tx.object(objectId),
+  //     tx.pure(bcs.vector(bcs.U8).serialize([0x11, 0x22, 0x33, 0x44])),
+  //   ]
+  // })
+  const dynamicFields = await client.getDynamicFields({
+    parentId: VAULT_ID
+  });
+
+  const dynamicObjects = await Promise.all(dynamicFields.data.map(field => (
+    client.getDynamicFieldObject({
+      parentId: VAULT_ID,
+      name: {
+        type: field.name.type,
+        value: field.name.value,
+      }
+    })
+  )));
+
+  console.log(dynamicObjects);
+
+  // const result = await client.signAndExecuteTransactionBlock({
+  //   signer: keypair,
+  //   transactionBlock: tx,
+  // });
+  // console.log({ result });
+  
+}
+
+
 async function listObjects(client: SuiClient, address: string) {
   const { data } = await client.getOwnedObjects({ owner: address, options: { showContent: true } });
   client.getDynamicFieldObject
@@ -79,6 +125,10 @@ async function main(argv: Record<string, any>) {
       const { objectId, hash } = argv;
       // console.log(argv);
       await lockObject(client, keypair, address, objectId, hash);
+      break;
+    }
+    case "scan": {
+      await scan(client, keypair);
       break;
     }
     default: {
@@ -145,6 +195,7 @@ const argv = yargs(hideBin(process.argv))
       demandOption: true,
     })
   })
+  .command("scan", "scan all objects owned")
   .parseSync();
 
 process.on("unhandledRejection", (err) => {
