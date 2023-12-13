@@ -6,6 +6,7 @@ module sui_lightning::object_lock {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::dynamic_object_field as ofield;
+    use std::hash::sha2_256 as sha2_256;
 
     struct ObjectLockVault has key, store {
         id: UID,
@@ -62,10 +63,11 @@ module sui_lightning::object_lock {
     public fun unlock_with_preimage<Obj: key + store>(
         vault: &mut ObjectLockVault,
         hash: vector<u8>,
-        _preimage: vector<u8>,
+        preimage: vector<u8>,
         _ctx: &mut TxContext
     ): Obj {
         // TODO: add sha256 preimage verification
+        assert!(sha2_256(preimage) == hash, 999);
         let obj_wrapper = ofield::remove<vector<u8>, LockedObjectWrapper<Obj>>(&mut vault.id, hash);
         let LockedObjectWrapper { id, owner: _, obj, invoice: _ } = obj_wrapper;
         object::delete(id);

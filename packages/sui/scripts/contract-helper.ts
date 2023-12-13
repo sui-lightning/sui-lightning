@@ -80,7 +80,7 @@ async function scan(client: SuiClient, keypair: Ed25519Keypair) {
     })
   )));
 
-  console.log(dynamicObjects);
+  console.dir(dynamicObjects, { depth: null });
 
   // const result = await client.signAndExecuteTransactionBlock({
   //   signer: keypair,
